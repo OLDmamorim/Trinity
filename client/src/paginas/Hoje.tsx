@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { api, type Briefing } from "../api";
-import { falar } from "../fala";
+import { calar, falar } from "../fala";
 import { ativarNotificacoes, notificacoesSuportadas } from "../notificacoes";
+import Orbe from "../Orbe";
+import { useFalando } from "../useFalando";
 
 function saudacao(): string {
   const h = new Date().getHours();
@@ -20,6 +22,7 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
   const [mostrarNotif, setMostrarNotif] = useState(
     notificacoesSuportadas() && typeof Notification !== "undefined" && Notification.permission === "default",
   );
+  const falando = useFalando();
 
   useEffect(() => {
     // Regresso do Google depois de autorizar o calendário
@@ -63,57 +66,55 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
   const dataHoje = new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 
   return (
-    <div className="h-full overflow-y-auto px-5 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <p className="text-xs uppercase tracking-[0.2em] text-matrix-escuro">// {dataHoje}</p>
-      <h1 className="falha mt-2 text-3xl text-matrix brilho">{saudacao()}, Marco</h1>
+    <div className="h-full overflow-y-auto px-6 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="etiqueta">{dataHoje}</p>
+          <h1 className="mt-2 text-3xl font-light tracking-tight">{saudacao()}, Marco</h1>
+        </div>
+        <button onClick={irParaConversa} aria-label="Falar com a Trinity" className="-mr-3 shrink-0">
+          <Orbe estado={aGerar ? "pensar" : falando ? "falar" : "repouso"} className="h-24 w-24" />
+        </button>
+      </div>
 
       {mostrarNotif && (
-        <button
-          onClick={notificacoes}
-          className="painel mt-5 w-full rounded-md px-4 py-3 text-left text-sm text-matrix-claro"
-        >
-          &gt; Ativar notificações para receberes o briefing todas as manhãs
+        <button onClick={notificacoes} className="mt-6 flex w-full items-center justify-between border-b border-linha py-3 text-left text-sm text-suave">
+          Receber o briefing todas as manhãs <span className="text-destaque">Ativar</span>
         </button>
       )}
 
       {google?.configurado && !google.ligado && (
-        <a href="/api/google/ligar" className="painel mt-4 block w-full rounded-md px-4 py-3 text-left text-sm text-matrix-claro">
-          &gt; Ligar Google Calendar para ver e criar marcações
+        <a href="/api/google/ligar" className="mt-2 flex w-full items-center justify-between border-b border-linha py-3 text-sm text-suave">
+          Google Calendar <span className="text-destaque">Ligar</span>
         </a>
       )}
 
-      <section className="painel mt-6 rounded-lg p-5">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm uppercase tracking-[0.25em] text-matrix brilho">&gt; O teu dia</h2>
-          {briefing && (
-            <button onClick={() => falar(briefing.texto)} className="text-xs uppercase tracking-[0.2em] text-matrix">
-              Ouvir
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="etiqueta">O teu dia</h2>
+          <div className="flex gap-5 text-sm">
+            {briefing && (
+              <button onClick={() => (falando ? calar() : falar(briefing.texto))} className="text-destaque">
+                {falando ? "Parar" : "Ouvir"}
+              </button>
+            )}
+            <button onClick={gerar} disabled={aGerar} className="text-suave disabled:opacity-50">
+              {aGerar ? "A preparar…" : briefing ? "Atualizar" : "Preparar"}
             </button>
-          )}
+          </div>
         </div>
         {aCarregar ? (
-          <p className="cursor text-matrix-escuro">A carregar</p>
+          <p className="text-suave">A carregar…</p>
         ) : briefing ? (
-          <div className="markdown text-[15px] leading-relaxed text-matrix-claro">
+          <div className="markdown text-[15px] leading-7 text-texto/90">
             <Markdown>{briefing.texto}</Markdown>
           </div>
         ) : (
-          <p className="text-matrix-escuro">Ainda não há briefing para hoje.</p>
+          <p className="text-suave">Ainda não há briefing para hoje. Toca em Preparar.</p>
         )}
-        <button
-          onClick={gerar}
-          disabled={aGerar}
-          className="mt-4 w-full rounded-md border border-matrix/30 bg-black/60 py-3 text-sm uppercase tracking-[0.15em] text-matrix disabled:opacity-50"
-        >
-          {aGerar ? "A preparar com os dados do PoweringEG…" : briefing ? "Atualizar" : "Preparar o meu dia"}
-        </button>
       </section>
 
-      {aviso && <p className="mt-4 text-sm text-amber-300">{aviso}</p>}
-
-      <button onClick={irParaConversa} className="botao-matrix mt-6 w-full rounded-md py-4">
-        Falar com a Trinity
-      </button>
+      {aviso && <p className="mt-6 text-sm text-amber-300">{aviso}</p>}
     </div>
   );
 }
