@@ -7,6 +7,8 @@ export type OpcoesGravacao = {
   aoSilencio?: (falou: boolean) => void;
   silencioMs?: number;
   semFalaMs?: number;
+  /** Se o browser ainda não deixa usar o áudio (app acabada de abrir, sem toque), desiste e devolve false. */
+  soSeAtivo?: boolean;
 };
 
 type Analisador = { ctx: AudioContext; no: AnalyserNode; dados: Uint8Array<ArrayBuffer> };
@@ -35,19 +37,27 @@ export function useGravador() {
     vigia.current = null;
   }
 
-  async function comecar(opcoes: OpcoesGravacao = {}) {
-    const { aoSilencio, silencioMs = 3000, semFalaMs = 10000 } = opcoes;
+  async function comecar(opcoes: OpcoesGravacao = {}): Promise<boolean> {
+    const { aoSilencio, silencioMs = 3000, semFalaMs = 10000, soSeAtivo = false } = opcoes;
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     const tipo = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find((t) => MediaRecorder.isTypeSupported(t));
     try {
       const ctx = new AudioContext();
-      await ctx.resume(); // no Android o contexto pode nascer suspenso e o volume ficava sempre a zero
+      // No Android o contexto pode nascer suspenso e o volume ficava sempre a zero. Sem um toque
+      // na página o resume() fica pendurado, por isso não se espera por ele mais de meio segundo.
+      await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 500))]);
       const no = ctx.createAnalyser();
       no.fftSize = 512;
       ctx.createMediaStreamSource(stream).connect(no);
       analisador.current = { ctx, no, dados: new Uint8Array(no.fftSize) };
     } catch {
       analisador.current = null; // sem Web Audio: sem deteção de silêncio, para-se à mão
+    }
+    if (soSeAtivo && analisador.current?.ctx.state !== "running") {
+      stream.getTracks().forEach((t) => t.stop());
+      analisador.current?.ctx.close().catch(() => {});
+      analisador.current = null;
+      return false;
     }
     const r = new MediaRecorder(stream, tipo ? { mimeType: tipo } : undefined);
     partes.current = [];
@@ -94,6 +104,7 @@ export function useGravador() {
         }
       }, 100);
     }
+    return true;
   }
 
   function parar(): Promise<Blob | null> {
