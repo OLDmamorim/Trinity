@@ -64,3 +64,16 @@ describe("API", () => {
     expect((await post("/api/push/subscrever", { endpoint: "https://push.example/1", keys: {} })).status).toBe(200);
   });
 });
+
+describe("Google Calendar (rotas)", () => {
+  it("recusa o regresso sem o estado certo", async () => {
+    const r = await fetch(`${base}/api/google/retorno?code=x&state=errado`, { headers: { cookie }, redirect: "manual" });
+    expect(r.status).toBe(302);
+    expect(r.headers.get("location")).toBe("/?google=erro");
+  });
+
+  it("diz se está configurado e ligado", async () => {
+    const r = await fetch(`${base}/api/google/estado`, { headers: { cookie } });
+    expect(await r.json()).toEqual({ configurado: false, ligado: false });
+  });
+});

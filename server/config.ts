@@ -28,6 +28,11 @@ export const config = {
   poweringUrl: opcional("POWERING_URL").replace(/\/+$/, ""),
   poweringKey: opcional("POWERING_API_KEY"),
 
+  // Google Calendar (OAuth). O endereço público serve para o regresso do Google depois de autorizar.
+  googleClientId: opcional("GOOGLE_CLIENT_ID"),
+  googleClientSecret: opcional("GOOGLE_CLIENT_SECRET"),
+  urlPublico: (opcional("TRINITY_URL") || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000")).replace(/\/+$/, ""),
+
   // Briefing diário: expressão cron, hora de Lisboa. Por omissão, 8h de segunda a sexta.
   briefingCron: opcional("BRIEFING_CRON", "0 8 * * 1-5"),
   fusoHorario: "Europe/Lisbon",

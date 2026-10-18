@@ -16,9 +16,20 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
   const [aCarregar, setACarregar] = useState(true);
   const [aGerar, setAGerar] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [google, setGoogle] = useState<{ configurado: boolean; ligado: boolean } | null>(null);
   const [mostrarNotif, setMostrarNotif] = useState(
     notificacoesSuportadas() && typeof Notification !== "undefined" && Notification.permission === "default",
   );
+
+  useEffect(() => {
+    // Regresso do Google depois de autorizar o calendário
+    const resultado = new URLSearchParams(window.location.search).get("google");
+    if (resultado) {
+      setAviso(resultado === "ligado" ? "Google Calendar ligado." : "Não foi possível ligar o Google Calendar. Tenta outra vez.");
+      window.history.replaceState(null, "", "/");
+    }
+    api.googleEstado().then(setGoogle).catch(() => {});
+  }, []);
 
   useEffect(() => {
     api
@@ -63,6 +74,12 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
         >
           &gt; Ativar notificações para receberes o briefing todas as manhãs
         </button>
+      )}
+
+      {google?.configurado && !google.ligado && (
+        <a href="/api/google/ligar" className="painel mt-4 block w-full rounded-md px-4 py-3 text-left text-sm text-matrix-claro">
+          &gt; Ligar Google Calendar para ver e criar marcações
+        </a>
       )}
 
       <section className="painel mt-6 rounded-lg p-5">

@@ -123,3 +123,16 @@ export function segredo(nome: string, gerar: () => string): string {
   d.prepare("INSERT INTO segredos (nome, valor) VALUES (?, ?)").run(nome, valor);
   return valor;
 }
+
+export function lerSegredo(nome: string): string | undefined {
+  const r = abrirDb().prepare("SELECT valor FROM segredos WHERE nome = ?").get(nome) as { valor: string } | undefined;
+  return r?.valor;
+}
+
+export function definirSegredo(nome: string, valor: string) {
+  abrirDb().prepare("INSERT INTO segredos (nome, valor) VALUES (?, ?) ON CONFLICT(nome) DO UPDATE SET valor = excluded.valor").run(nome, valor);
+}
+
+export function apagarSegredo(nome: string) {
+  abrirDb().prepare("DELETE FROM segredos WHERE nome = ?").run(nome);
+}

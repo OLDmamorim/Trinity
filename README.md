@@ -25,6 +25,17 @@ Próximas fases: Google Calendar e Gmail, sugestões do YouTube, coaching. Ver o
 5. **Settings → Networking → Generate Domain** e abrir esse endereço no Chrome do telemóvel.
 6. No Chrome: menu ⋮ → **Instalar app** (ou "Adicionar ao ecrã principal"). Depois, no ecrã Hoje, tocar em "Ativar notificações".
 
+## Ligar o Google Calendar
+
+1. Em https://console.cloud.google.com cria um projeto (ex.: "Trinity").
+2. Em **APIs e serviços → Biblioteca**, ativa a **Google Calendar API**.
+3. No **ecrã de consentimento OAuth** escolhe **Externo**, dá o nome "Trinity" e o teu email. Em **Público-alvo**, carrega em **Publicar aplicação** (em modo de teste o Google corta o acesso ao fim de 7 dias).
+4. Em **Clientes** (ou Credenciais) cria um **ID de cliente OAuth** do tipo **Aplicação Web**, com o URI de redirecionamento autorizado `<endereço da app>/api/google/retorno`.
+5. No Railway, define `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` com os valores do cliente.
+6. Na Trinity, no separador **Hoje**, toca em **Ligar Google Calendar** e autoriza com a tua conta. Como a app não é verificada pelo Google, aparece um aviso: **Avançadas → Aceder a Trinity**.
+
+A Trinity lê todos os calendários visíveis e cria marcações no principal (ou noutro, se lhe disseres qual).
+
 ## Desenvolvimento
 ```bash
 npm install

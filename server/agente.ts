@@ -3,9 +3,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { config } from "./config.js";
-import { agoraPorExtenso } from "./datas.js";
+import { agoraPorExtenso, diaLisboa } from "./datas.js";
 import * as db from "./db.js";
 import * as powering from "./powering.js";
+import * as google from "./google.js";
 
 let cliente: Anthropic | null = null;
 function claude(): Anthropic {
@@ -25,7 +26,10 @@ O que fazes:
 - Dás orientação prática: o que fazer primeiro, que loja visitar, que pendente está a ficar velho, que KPI precisa de atenção.
 - Quando o Marco te conta uma preferência, objetivo ou facto pessoal que vale a pena lembrar, guarda-o com a ferramenta guardar_memoria. Não guardes coisas passageiras.
 - Se uma ferramenta falhar ou o PoweringEG não estiver ligado, diz isso numa frase e ajuda com o que tiveres.
-- Ainda não tens acesso ao Google Calendar, ao Gmail nem ao YouTube; essas ligações vêm a seguir. Se ele pedir, diz que ainda não consegues e que está planeado.`;
+- Tens acesso ao Google Calendar dele (todos os calendários). Para perguntas sobre agenda, disponibilidade ou o dia, usa a ferramenta agenda e junta com as reuniões agendadas do PoweringEG.
+- Para marcar alguma coisa usa criar_marcacao. Se ele disse claramente o quê, o dia e a hora (ou que é o dia todo), cria logo e confirma numa frase. Se faltar o dia ou a hora, pergunta antes. Datas relativas ("amanhã", "sexta") contam a partir do dia de hoje indicado na mensagem.
+- Se o Google Calendar não estiver ligado, diz-lhe para tocar em "Ligar Google Calendar" no separador Hoje.
+- Ainda não tens acesso ao Gmail nem ao YouTube; essas ligações vêm a seguir.`;
 
 function blocoMemorias(): string {
   const memorias = db.listarMemorias();
@@ -75,6 +79,36 @@ const ferramentas = [
       lojaId: z.number().int().optional(),
     }),
     run: ({ mes, ano, lojaId }) => seguro(() => powering.obterNps(mes, ano, lojaId)),
+  }),
+  betaZodTool({
+    name: "agenda",
+    description:
+      "Eventos do Google Calendar do Marco (todos os calendários visíveis) entre dois dias, inclusive, na hora de Lisboa. Sem datas, devolve o dia de hoje.",
+    inputSchema: z.object({
+      de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Primeiro dia, AAAA-MM-DD."),
+      ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Último dia, AAAA-MM-DD (por omissão, o mesmo que 'de')."),
+    }),
+    run: ({ de, ate }) => {
+      const inicio = de ?? diaLisboa();
+      return seguro(() => google.agenda(inicio, ate ?? inicio));
+    },
+  }),
+  betaZodTool({
+    name: "criar_marcacao",
+    description:
+      "Cria um evento no Google Calendar do Marco. Horas em hora de Lisboa. Sem fim, dura 1 hora (ou o dia todo, se for de dia inteiro).",
+    inputSchema: z.object({
+      titulo: z.string().min(1).max(200),
+      inicio: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/)
+        .describe("AAAA-MM-DDTHH:MM, ou só AAAA-MM-DD para um evento de dia inteiro."),
+      fim: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/).optional(),
+      local: z.string().max(300).optional(),
+      descricao: z.string().max(2000).optional(),
+      calendario: z.string().max(200).optional().describe("Nome do calendário; por omissão, o principal."),
+    }),
+    run: (ev) => seguro(() => google.criarEvento(ev)),
   }),
   betaZodTool({
     name: "guardar_memoria",
@@ -135,7 +169,18 @@ Formato (markdown simples, português de Portugal, no máximo ~180 palavras):
 - Uma linha de abertura com o essencial do dia.
 - "Prioridades": 3 a 5 pontos concretos, por ordem, cada um com o porquê (ex.: pendente crítico há 12 dias na loja X; loja Y sem visita há 40 dias; reunião às 10h).
 - "Atenção": no máximo 2 alertas ou riscos, só se existirem.
+Inclui os eventos de hoje do Google Calendar (se vierem) nas prioridades, com a hora.
 Usa só os dados fornecidos; não inventes. Se faltarem dados, diz numa frase.`;
+
+async function agendaDeHoje(): Promise<string> {
+  if (!google.googleLigado()) return "";
+  try {
+    const hoje = diaLisboa();
+    return `\n\nGoogle Calendar de hoje:\n${emJson(await google.agenda(hoje, hoje))}`;
+  } catch (e) {
+    return `\n\nGoogle Calendar: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
 
 /** Gera o texto do briefing do dia (sem ferramentas: os dados vão no pedido). */
 export async function gerarTextoBriefing(): Promise<string> {
@@ -156,7 +201,7 @@ export async function gerarTextoBriefing(): Promise<string> {
       { type: "text", text: INSTRUCOES_BRIEFING },
       { type: "text", text: blocoMemorias() },
     ],
-    messages: [{ role: "user", content: `Hoje é ${agoraPorExtenso()}.\n\nDados do PoweringEG:\n${dados}` }],
+    messages: [{ role: "user", content: `Hoje é ${agoraPorExtenso()}.\n\nDados do PoweringEG:\n${dados}${await agendaDeHoje()}` }],
   });
   return textoFinal(msg);
 }

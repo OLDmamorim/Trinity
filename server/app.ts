@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import { entrar, sair, exigirSessao } from "./auth.js";
 import * as db from "./db.js";
 import { responder } from "./agente.js";
@@ -11,6 +12,8 @@ import { transcrever } from "./voz.js";
 import { gerarBriefing } from "./briefing.js";
 import { chavePublica } from "./push.js";
 import { diaLisboa } from "./datas.js";
+import { config } from "./config.js";
+import * as google from "./google.js";
 import Anthropic from "@anthropic-ai/sdk";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -92,6 +95,38 @@ export function criarApp(pastaCliente?: string) {
     const sub = req.body;
     if (!sub?.endpoint) return res.status(400).json({ erro: "Subscrição inválida." });
     db.guardarSubscricao(sub.endpoint, sub);
+    res.json({ ok: true });
+  });
+
+  // Google Calendar: ligar (vai ao Google), regresso com o código, estado e desligar
+  const COOKIE_ESTADO = "trinity_google_estado";
+  api.get("/google/estado", (_req, res) => {
+    res.json({ configurado: google.googleConfigurado(), ligado: google.googleLigado() });
+  });
+
+  api.get("/google/ligar", (_req, res) => {
+    if (!google.googleConfigurado()) return res.status(400).send("O Google Calendar ainda não está configurado no servidor.");
+    const estado = crypto.randomBytes(16).toString("hex");
+    res.cookie(COOKIE_ESTADO, estado, { httpOnly: true, sameSite: "lax", secure: config.producao, maxAge: 10 * 60 * 1000, path: "/api/google" });
+    res.redirect(google.urlAutorizacao(estado));
+  });
+
+  api.get("/google/retorno", async (req, res) => {
+    const estado = String(req.query.state ?? "");
+    const esperado = req.cookies?.[COOKIE_ESTADO];
+    res.clearCookie(COOKIE_ESTADO, { path: "/api/google" });
+    if (!esperado || estado !== esperado || typeof req.query.code !== "string") return res.redirect("/?google=erro");
+    try {
+      await google.concluirLigacao(req.query.code);
+      res.redirect("/?google=ligado");
+    } catch (e) {
+      console.error("[google] ligação falhou:", e);
+      res.redirect("/?google=erro");
+    }
+  });
+
+  api.post("/google/desligar", (_req, res) => {
+    google.desligar();
     res.json({ ok: true });
   });
 
