@@ -53,40 +53,40 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
 
   return (
     <div className="h-full overflow-y-auto px-5 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <p className="text-sm text-slate-400 first-letter:uppercase">{dataHoje}</p>
-      <h1 className="mt-1 text-3xl font-semibold text-white">{saudacao()}, Marco</h1>
+      <p className="text-xs uppercase tracking-[0.2em] text-matrix-escuro">// {dataHoje}</p>
+      <h1 className="falha mt-2 text-3xl text-matrix brilho">{saudacao()}, Marco</h1>
 
       {mostrarNotif && (
         <button
           onClick={notificacoes}
-          className="mt-5 w-full rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-left text-sm text-cyan-200"
+          className="painel mt-5 w-full rounded-md px-4 py-3 text-left text-sm text-matrix-claro"
         >
-          Ativar notificações para receberes o briefing todas as manhãs
+          &gt; Ativar notificações para receberes o briefing todas as manhãs
         </button>
       )}
 
-      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+      <section className="painel mt-6 rounded-lg p-5">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-semibold text-white">O teu dia</h2>
+          <h2 className="text-sm uppercase tracking-[0.25em] text-matrix brilho">&gt; O teu dia</h2>
           {briefing && (
-            <button onClick={() => falar(briefing.texto)} className="text-sm text-cyan-300">
+            <button onClick={() => falar(briefing.texto)} className="text-xs uppercase tracking-[0.2em] text-matrix">
               Ouvir
             </button>
           )}
         </div>
         {aCarregar ? (
-          <p className="text-slate-500">A carregar…</p>
+          <p className="cursor text-matrix-escuro">A carregar</p>
         ) : briefing ? (
-          <div className="markdown text-[15px] leading-relaxed text-slate-200">
+          <div className="markdown text-[15px] leading-relaxed text-matrix-claro">
             <Markdown>{briefing.texto}</Markdown>
           </div>
         ) : (
-          <p className="text-slate-400">Ainda não há briefing para hoje.</p>
+          <p className="text-matrix-escuro">Ainda não há briefing para hoje.</p>
         )}
         <button
           onClick={gerar}
           disabled={aGerar}
-          className="mt-4 w-full rounded-xl bg-white/10 py-3 text-sm font-medium text-white disabled:opacity-50"
+          className="mt-4 w-full rounded-md border border-matrix/30 bg-black/60 py-3 text-sm uppercase tracking-[0.15em] text-matrix disabled:opacity-50"
         >
           {aGerar ? "A preparar com os dados do PoweringEG…" : briefing ? "Atualizar" : "Preparar o meu dia"}
         </button>
@@ -94,7 +94,7 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
 
       {aviso && <p className="mt-4 text-sm text-amber-300">{aviso}</p>}
 
-      <button onClick={irParaConversa} className="mt-6 w-full rounded-2xl bg-cyan-500 py-4 font-semibold text-slate-950">
+      <button onClick={irParaConversa} className="botao-matrix mt-6 w-full rounded-md py-4">
         Falar com a Trinity
       </button>
     </div>

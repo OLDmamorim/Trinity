@@ -96,24 +96,24 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
-        <h1 className="text-lg font-semibold text-white">Trinity</h1>
-        <button onClick={alternarVoz} className="text-sm text-slate-400">
-          Voz: <span className={vozLigada ? "text-cyan-300" : ""}>{vozLigada ? "ligada" : "desligada"}</span>
+      <header className="flex items-center justify-between border-b border-matrix/30 bg-black/70 backdrop-blur px-5 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
+        <h1 className="falha text-lg uppercase tracking-[0.35em] text-matrix brilho">Trinity</h1>
+        <button onClick={alternarVoz} className="text-xs uppercase tracking-[0.15em] text-matrix-escuro">
+          Voz: <span className={vozLigada ? "text-matrix brilho" : ""}>{vozLigada ? "ligada" : "desligada"}</span>
         </button>
       </header>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {mensagens.length === 0 && (
           <div className="space-y-2 pt-6">
-            <p className="px-1 text-sm text-slate-400">Pergunta-me o que quiseres, por escrito ou por voz.</p>
+            <p className="cursor px-1 text-sm text-matrix-escuro">Pergunta-me o que quiseres, por escrito ou por voz</p>
             {SUGESTOES.map((s) => (
               <button
                 key={s}
                 onClick={() => enviar(s, false)}
-                className="block w-full rounded-xl border border-white/10 px-4 py-3 text-left text-sm text-slate-200"
+                className="painel block w-full rounded-md px-4 py-3 text-left text-sm text-matrix-claro"
               >
-                {s}
+                &gt; {s}
               </button>
             ))}
           </div>
@@ -121,20 +121,22 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
         {mensagens.map((m) => (
           <div key={m.id} className={`flex ${m.papel === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
-                m.papel === "user" ? "bg-cyan-500 text-slate-950" : "markdown bg-white/[0.06] text-slate-100"
+              className={`max-w-[85%] rounded-md px-4 py-2.5 text-[15px] leading-relaxed ${
+                m.papel === "user"
+                  ? "border border-matrix/60 bg-matrix/15 text-matrix-claro shadow-[0_0_12px_rgba(0,255,65,0.25)]"
+                  : "markdown painel text-matrix-claro"
               }`}
             >
               {m.papel === "user" ? m.texto : <Markdown>{m.texto}</Markdown>}
             </div>
           </div>
         ))}
-        {aPensar && <div className="px-2 text-sm text-slate-500">A pensar…</div>}
+        {aPensar && <div className="cursor px-2 text-sm uppercase tracking-[0.2em] text-matrix">A processar</div>}
         {erro && <div className="px-2 text-sm text-amber-300">{erro}</div>}
         <div ref={fundo} />
       </div>
 
-      <form onSubmit={submeter} className="flex items-end gap-2 border-t border-white/10 p-3">
+      <form onSubmit={submeter} className="flex items-end gap-2 border-t border-matrix/30 bg-black/75 p-3 backdrop-blur">
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
@@ -145,11 +147,11 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
             }
           }}
           rows={1}
-          placeholder="Escreve aqui…"
-          className="max-h-32 min-h-12 flex-1 resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-400"
+          placeholder="> escreve aqui"
+          className="max-h-32 min-h-12 flex-1 resize-none rounded-md border border-matrix/30 bg-black/70 px-4 py-3 text-matrix-claro placeholder:text-matrix-escuro outline-none focus:border-matrix focus:shadow-[0_0_12px_rgba(0,255,65,0.4)]"
         />
         {texto.trim() ? (
-          <button disabled={aPensar} className="h-12 rounded-2xl bg-cyan-500 px-4 font-semibold text-slate-950 disabled:opacity-50">
+          <button disabled={aPensar} className="botao-matrix h-12 rounded-md px-4 text-sm disabled:opacity-40">
             Enviar
           </button>
         ) : (
@@ -159,13 +161,13 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
             disabled={aPensar && !gravador.aGravar}
             aria-label={gravador.aGravar ? "Parar e enviar" : "Falar"}
             className={`grid h-12 w-12 place-items-center rounded-full disabled:opacity-50 ${
-              gravador.aGravar ? "animate-pulse bg-red-500" : "bg-cyan-500"
+              gravador.aGravar ? "animate-pulse bg-red-500 shadow-[0_0_20px_rgba(255,0,60,0.7)]" : "botao-matrix"
             }`}
           >
             {gravador.aGravar ? (
               <span className="h-4 w-4 rounded-sm bg-white" />
             ) : (
-              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-slate-950">
+              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-matrix">
                 <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
               </svg>
             )}
