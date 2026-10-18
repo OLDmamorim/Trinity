@@ -34,6 +34,7 @@ export const api = {
   },
   hoje: () => pedir<{ briefing: Briefing | null }>("/hoje"),
   gerarHoje: () => pedir<{ briefing: Briefing }>("/hoje", { method: "POST" }),
+  googleEstado: () => pedir<{ configurado: boolean; ligado: boolean }>("/google/estado"),
   chavePush: () => pedir<{ chave: string }>("/push/chave"),
   subscreverPush: (sub: PushSubscriptionJSON) => pedir<{ ok: true }>("/push/subscrever", json(sub)),
 };
