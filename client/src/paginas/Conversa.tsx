@@ -46,6 +46,13 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     }
   }
 
+  // Modo conversa por voz: tocas uma vez no microfone, falas, e ao fim de 3 segundos
+  // calado ela responde em voz alta e volta a ouvir, até tocares outra vez para sair.
+  const [modoVoz, setModoVoz] = useState(false);
+  const modoVozRef = useRef(false);
+  const vozLigadaRef = useRef(vozLigada);
+  vozLigadaRef.current = vozLigada;
+
   async function enviar(conteudo: string, porVoz: boolean) {
     const limpo = conteudo.trim();
     if (!limpo || aPensar) return;
@@ -57,10 +64,12 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     try {
       const { resposta } = await api.enviar(limpo, porVoz);
       setMensagens((m) => [...m, { id: Date.now(), papel: "assistant", texto: resposta, por_voz: 0, criado_em: "" }]);
-      if (porVoz && vozLigada) falar(resposta);
+      if (porVoz && vozLigadaRef.current) falar(resposta);
+      else if (modoVozRef.current) ouvir(); // voz desligada: volta logo a ouvir
     } catch (e) {
       aoErro(e);
       setErro(e instanceof Error ? e.message : "Não consegui responder.");
+      sairModoVoz();
     } finally {
       setAPensar(false);
     }
@@ -71,34 +80,70 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     enviar(texto, false);
   }
 
-  async function microfone() {
+  function sairModoVoz() {
+    modoVozRef.current = false;
+    setModoVoz(false);
+  }
+
+  async function ouvir() {
     setErro("");
-    if (!gravador.aGravar) {
-      calar();
-      try {
-        await gravador.comecar();
-      } catch {
-        setErro("Não consegui usar o microfone. Verifica a permissão no Chrome.");
-      }
+    calar();
+    try {
+      await gravador.comecar({ aoSilencio: terminarDeFalar, silencioMs: 3000 });
+    } catch {
+      setErro("Não consegui usar o microfone. Verifica a permissão no Chrome.");
+      sairModoVoz();
+    }
+  }
+
+  async function terminarDeFalar(falou = true) {
+    const audio = await gravador.parar();
+    if (!falou || !audio) {
+      sairModoVoz(); // ficou calado: sai do modo de voz sem fazer barulho
       return;
     }
-    const audio = await gravador.parar();
-    if (!audio) return;
     setAPensar(true);
     try {
       const { texto: transcrito } = await api.transcrever(audio);
       setAPensar(false);
       if (transcrito) await enviar(transcrito, true);
-      else setErro("Não percebi o que disseste. Tenta outra vez.");
+      else {
+        setErro("Não percebi o que disseste. Tenta outra vez.");
+        sairModoVoz();
+      }
     } catch (e) {
       aoErro(e);
       setAPensar(false);
       setErro(e instanceof Error ? e.message : "A transcrição falhou.");
+      sairModoVoz();
     }
   }
 
+  // Quando ela acaba de falar, volta a ouvir se o modo de voz estiver ligado
+  const falavaAntes = useRef(false);
+  useEffect(() => {
+    if (falavaAntes.current && !falando && modoVozRef.current) ouvir();
+    falavaAntes.current = falando;
+  }, [falando]);
+
+  function microfone() {
+    if (gravador.aGravar) {
+      terminarDeFalar(true); // já acabou de falar: envia sem esperar pelo silêncio
+      return;
+    }
+    if (modoVoz) {
+      // A pensar ou a falar: toque para sair
+      sairModoVoz();
+      calar();
+      return;
+    }
+    modoVozRef.current = true;
+    setModoVoz(true);
+    ouvir();
+  }
+
   const estadoOrbe: EstadoOrbe = gravador.aGravar ? "ouvir" : aPensar ? "pensar" : falando ? "falar" : "repouso";
-  const legenda = { ouvir: "A ouvir…", pensar: "A pensar…", falar: "", repouso: "" }[estadoOrbe];
+  const legenda = { ouvir: "A ouvir…", pensar: "A pensar…", falar: "", repouso: modoVoz ? "" : "Toca na bola para falar" }[estadoOrbe];
   const vazia = mensagens.length === 0;
 
   return (
@@ -115,8 +160,14 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
 
       <div className={`flex shrink-0 flex-col items-center transition-all duration-500 ${vazia ? "flex-1 justify-center" : ""}`}>
         <button
-          onClick={() => (falando ? calar() : undefined)}
-          aria-label={falando ? "Parar de falar" : "Trinity"}
+          onClick={() => {
+            if (modoVoz || falando) {
+              sairModoVoz();
+              if (gravador.aGravar) gravador.parar();
+              calar();
+            } else microfone();
+          }}
+          aria-label={modoVoz ? "Terminar conversa por voz" : "Falar com a Trinity"}
           className={vazia ? "h-72 w-72" : "h-44 w-44"}
         >
           <Orbe estado={estadoOrbe} nivelMic={gravador.nivel} className="h-full w-full" />
@@ -176,14 +227,18 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
           <button
             type="button"
             onClick={microfone}
-            disabled={aPensar && !gravador.aGravar}
-            aria-label={gravador.aGravar ? "Parar e enviar" : "Falar"}
+            disabled={aPensar && !modoVoz}
+            aria-label={gravador.aGravar ? "Enviar já" : modoVoz ? "Terminar conversa por voz" : "Falar"}
             className={`grid h-12 w-12 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-30 ${
-              gravador.aGravar ? "bg-red-500 text-white" : "bg-destaque text-black"
+              gravador.aGravar ? "bg-red-500 text-white" : modoVoz ? "bg-white/10 text-texto" : "bg-destaque text-black"
             }`}
           >
             {gravador.aGravar ? (
               <span className="h-4 w-4 rounded-sm bg-white" />
+            ) : modoVoz ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
             ) : (
               <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
                 <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
