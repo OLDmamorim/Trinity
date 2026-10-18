@@ -79,7 +79,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     try {
       const { resposta } = await api.enviar(limpo, porVoz);
       setMensagens((m) => [...m, { id: Date.now(), papel: "assistant", texto: resposta, por_voz: 0, criado_em: "" }]);
-      if (porVoz && vozLigadaRef.current) falar(resposta);
+      if (porVoz && vozLigadaRef.current && modoVozRef.current) falar(resposta);
       else if (modoVozRef.current) ouvir(); // voz desligada: volta logo a ouvir
     } catch (e) {
       aoErro(e);
@@ -162,7 +162,20 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
       calar();
       return;
     }
-    if (!aPensar) entrarModoVoz();
+    if (aPensar) {
+      sairModoVoz(); // a resposta chega na mesma, mas não é lida nem volta a ouvir
+      return;
+    }
+    entrarModoVoz();
+  }
+
+  // Botão de baixo: microfone para começar; a ouvir, envia já; a pensar ou a responder, para tudo.
+  function botaoFalar() {
+    if (gravador.aGravar) {
+      terminarDeFalar(true);
+      return;
+    }
+    tocarNaBola();
   }
 
   const estadoOrbe: EstadoOrbe = gravador.aGravar ? "ouvir" : aPensar ? "pensar" : falando ? "falar" : "repouso";
@@ -187,7 +200,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
         <Orbe estado={estadoOrbe} nivelMic={gravador.nivel} className="aspect-square w-[min(100vw,72vh)]" />
       </button>
 
-      <div className="flex min-h-24 flex-col items-center justify-start gap-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex flex-col items-center justify-start gap-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {erro && <p className="text-center text-sm text-amber-300">{erro}</p>}
         {whatsapp && !gravador.aGravar && !aPensar && (
           <a
@@ -199,6 +212,29 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
             Abrir no WhatsApp
           </a>
         )}
+        <button
+          onClick={botaoFalar}
+          aria-label={gravador.aGravar ? "Enviar já" : modoVoz || falando ? "Parar" : "Falar"}
+          className={`relative mt-1 grid h-20 w-20 place-items-center rounded-full transition-colors ${
+            gravador.aGravar ? "bg-red-500 text-white" : modoVoz || falando || aPensar ? "bg-white/10 text-texto" : "bg-destaque text-black"
+          }`}
+        >
+          {gravador.aGravar && <span className="absolute inset-0 animate-ping rounded-full bg-red-500/40" />}
+          {gravador.aGravar ? (
+            <span className="relative h-6 w-6 rounded-md bg-white" />
+          ) : modoVoz || falando || aPensar ? (
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-9 w-9 fill-current">
+              <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
+            </svg>
+          )}
+        </button>
+        <p className="h-4 text-xs tracking-[0.2em] text-suave">
+          {gravador.aGravar ? "A OUVIR" : aPensar ? "A PENSAR" : falando ? "A RESPONDER" : ""}
+        </p>
       </div>
 
       {menu && (
