@@ -7,6 +7,7 @@ import { useGravador } from "../gravador";
 import { calar, falar } from "../fala";
 import Orbe, { type EstadoOrbe } from "../Orbe";
 import { useFalando } from "../useFalando";
+import { useEcraLigado } from "../useEcraLigado";
 import Hoje from "./Hoje";
 
 type Separador = "conversa" | "hoje";
@@ -177,6 +178,8 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     }
     tocarNaBola();
   }
+
+  useEcraLigado(modoVoz || falando || aPensar || gravador.aGravar);
 
   const estadoOrbe: EstadoOrbe = gravador.aGravar ? "ouvir" : aPensar ? "pensar" : falando ? "falar" : "repouso";
   const ultima = [...mensagens].reverse().find((m) => m.papel === "assistant");
