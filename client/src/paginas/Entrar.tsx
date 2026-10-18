@@ -22,11 +22,11 @@ export default function Entrar({ aoEntrar }: { aoEntrar: () => void }) {
 
   return (
     <div className="grid h-full place-items-center px-6">
-      <form onSubmit={submeter} className="w-full max-w-sm space-y-5">
+      <form onSubmit={submeter} className="painel w-full max-w-sm space-y-5 rounded-lg p-6">
         <div className="text-center">
-          <img src="/icone.svg" alt="" className="mx-auto mb-4 h-20 w-20 rounded-2xl" />
-          <h1 className="text-2xl font-semibold text-white">Trinity</h1>
-          <p className="mt-1 text-sm text-slate-400">A tua assistente pessoal</p>
+          <img src="/icone.svg" alt="" className="mx-auto mb-4 h-20 w-20 rounded-lg shadow-[0_0_24px_rgba(0,255,65,0.45)]" />
+          <h1 className="falha text-3xl uppercase tracking-[0.35em] text-matrix brilho">Trinity</h1>
+          <p className="cursor mt-2 text-xs uppercase tracking-[0.2em] text-matrix-escuro">Acesso restrito</p>
         </div>
         {/* username escondido para o Chrome guardar a palavra-passe e preencher com a impressão digital */}
         <input type="text" name="username" autoComplete="username" value="marco" readOnly hidden />
@@ -34,18 +34,18 @@ export default function Entrar({ aoEntrar }: { aoEntrar: () => void }) {
           type="password"
           name="password"
           autoComplete="current-password"
-          placeholder="Palavra-passe"
+          placeholder="> palavra-passe"
           value={palavraPasse}
           onChange={(e) => setPalavraPasse(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-400"
+          className="w-full rounded-md border border-matrix/30 bg-black/70 px-4 py-3 text-matrix-claro placeholder:text-matrix-escuro outline-none focus:border-matrix focus:shadow-[0_0_12px_rgba(0,255,65,0.4)]"
           autoFocus
         />
         {erro && <p className="text-sm text-red-400">{erro}</p>}
         <button
           disabled={aEntrar || !palavraPasse}
-          className="w-full rounded-xl bg-cyan-500 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          className="botao-matrix w-full rounded-md py-3 disabled:opacity-40"
         >
-          {aEntrar ? "A entrar…" : "Entrar"}
+          {aEntrar ? "A autenticar…" : "Entrar"}
         </button>
       </form>
     </div>

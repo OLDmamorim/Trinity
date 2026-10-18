@@ -1,20 +1,109 @@
 @import "tailwindcss";
 
+@theme {
+  --color-matrix: #00ff41;
+  --color-matrix-claro: #9dffb4;
+  --color-matrix-escuro: #008f11;
+  --font-mono: "Share Tech Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
 :root {
   color-scheme: dark;
 }
 
+html {
+  background: #000;
+}
+
+/* body e #root transparentes para a chuva (canvas com z-index negativo) se ver. */
 html,
 body,
 #root {
   height: 100%;
-  background: #0b0f19;
-  color: #e5e7eb;
+  color: #c8ffd4;
+  font-family: var(--font-mono);
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Linhas de varrimento tipo monitor antigo, por cima de tudo mas sem apanhar toques. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.18) 3px);
+}
+
+/* Painel de vidro escuro com contorno verde a brilhar. */
+.painel {
+  background: rgba(0, 10, 2, 0.72);
+  border: 1px solid rgba(0, 255, 65, 0.28);
+  box-shadow: 0 0 18px rgba(0, 255, 65, 0.12), inset 0 0 24px rgba(0, 255, 65, 0.05);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.brilho {
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.75), 0 0 18px rgba(0, 255, 65, 0.35);
+}
+
+.botao-matrix {
+  background: rgba(0, 255, 65, 0.12);
+  border: 1px solid #00ff41;
+  color: #00ff41;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  box-shadow: 0 0 14px rgba(0, 255, 65, 0.35), inset 0 0 10px rgba(0, 255, 65, 0.15);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.botao-matrix:active:not(:disabled) {
+  background: rgba(0, 255, 65, 0.3);
+  box-shadow: 0 0 24px rgba(0, 255, 65, 0.6);
+}
+
+/* Cursor de terminal a piscar. */
+.cursor::after {
+  content: "▌";
+  margin-left: 2px;
+  animation: piscar 1s steps(1) infinite;
+}
+@keyframes piscar {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Título com uma ligeira falha digital de vez em quando. */
+.falha {
+  animation: falha 6s infinite;
+}
+@keyframes falha {
+  0%, 92%, 100% {
+    transform: none;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.75), 0 0 18px rgba(0, 255, 65, 0.35);
+  }
+  93% {
+    transform: translateX(-2px) skewX(-8deg);
+    text-shadow: 2px 0 #00ffd5, -2px 0 #ff0055;
+  }
+  95% {
+    transform: translateX(2px);
+    text-shadow: -2px 0 #00ffd5, 2px 0 #ff0055;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .falha,
+  .cursor::after {
+    animation: none;
+  }
+}
+
 .markdown p { margin: 0.4rem 0; }
-.markdown ul { list-style: disc; padding-left: 1.2rem; margin: 0.4rem 0; }
+.markdown ul { list-style: square; padding-left: 1.2rem; margin: 0.4rem 0; }
 .markdown ol { list-style: decimal; padding-left: 1.2rem; margin: 0.4rem 0; }
-.markdown h1, .markdown h2, .markdown h3 { font-weight: 600; margin: 0.8rem 0 0.3rem; }
+.markdown li::marker { color: #00ff41; }
+.markdown h1, .markdown h2, .markdown h3 { color: #00ff41; text-transform: uppercase; letter-spacing: 0.08em; margin: 0.8rem 0 0.3rem; }
 .markdown strong { color: #fff; }
+.markdown code { color: #00ff41; }
