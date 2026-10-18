@@ -3,7 +3,6 @@ import Texto from "../Texto";
 import { api, type Briefing } from "../api";
 import { calar, falar } from "../fala";
 import { ativarNotificacoes, notificacoesSuportadas } from "../notificacoes";
-import Orbe from "../Orbe";
 import { useFalando } from "../useFalando";
 
 function saudacao(): string {
@@ -66,15 +65,12 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
   const dataHoje = new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 
   return (
-    <div className="h-full overflow-y-auto px-6 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))]">
+    <div className="h-full overflow-y-auto px-6 pb-10 pt-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="etiqueta">{dataHoje}</p>
           <h1 className="mt-2 text-3xl font-light tracking-tight">{saudacao()}, Marco</h1>
         </div>
-        <button onClick={irParaConversa} aria-label="Falar com a Trinity" className="-mr-3 shrink-0">
-          <Orbe estado={aGerar ? "pensar" : falando ? "falar" : "repouso"} className="h-24 w-24" />
-        </button>
       </div>
 
       {mostrarNotif && (

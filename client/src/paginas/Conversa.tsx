@@ -1,3 +1,5 @@
+// Ecrã principal: só a bola, em conversa por voz. A conversa escrita e o "O meu dia"
+// ficam num menu que se abre no canto.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Texto from "../Texto";
 import { api, type Mensagem } from "../api";
@@ -5,14 +7,20 @@ import { useGravador } from "../gravador";
 import { calar, falar } from "../fala";
 import Orbe, { type EstadoOrbe } from "../Orbe";
 import { useFalando } from "../useFalando";
+import Hoje from "./Hoje";
 
-const SUGESTOES = ["O que devo fazer primeiro hoje?", "Que lojas estão há mais tempo sem visita?", "Quais os pendentes mais antigos?"];
+type Separador = "conversa" | "hoje";
+
+function linkWhatsApp(texto: string): string | null {
+  return texto.match(/\((https:\/\/wa\.me\/[^)\s]+)\)/)?.[1] ?? null;
+}
 
 export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [texto, setTexto] = useState("");
   const [aPensar, setAPensar] = useState(false);
   const [erro, setErro] = useState("");
+  const [menu, setMenu] = useState<Separador | null>(null);
   const [vozLigada, setVozLigada] = useState(() => {
     try {
       return localStorage.getItem("trinity-voz") !== "0";
@@ -24,16 +32,30 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   const falando = useFalando();
   const fundo = useRef<HTMLDivElement>(null);
 
+  // Modo conversa por voz: fala-se, ao fim de 3 segundos calado ela responde em voz alta
+  // e volta a ouvir, até se tocar na bola para parar.
+  const [modoVoz, setModoVoz] = useState(false);
+  const modoVozRef = useRef(false);
+  const vozLigadaRef = useRef(vozLigada);
+  vozLigadaRef.current = vozLigada;
+
   useEffect(() => {
     api
       .conversa()
       .then((r) => setMensagens(r.mensagens))
       .catch(aoErro);
+    // Abre logo a ouvir, se o browser já deixar usar o microfone sem um toque
+    entrarModoVoz(true);
+    return () => {
+      modoVozRef.current = false;
+      gravador.parar();
+      calar();
+    };
   }, []);
 
   useEffect(() => {
-    fundo.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mensagens, aPensar]);
+    if (menu === "conversa") fundo.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensagens, aPensar, menu]);
 
   function alternarVoz() {
     const novo = !vozLigada;
@@ -46,16 +68,9 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     }
   }
 
-  // Modo conversa por voz: tocas uma vez no microfone, falas, e ao fim de 3 segundos
-  // calado ela responde em voz alta e volta a ouvir, até tocares outra vez para sair.
-  const [modoVoz, setModoVoz] = useState(false);
-  const modoVozRef = useRef(false);
-  const vozLigadaRef = useRef(vozLigada);
-  vozLigadaRef.current = vozLigada;
-
   async function enviar(conteudo: string, porVoz: boolean) {
     const limpo = conteudo.trim();
-    if (!limpo || aPensar) return;
+    if (!limpo) return;
     setErro("");
     setTexto("");
     const temp: Mensagem = { id: -Date.now(), papel: "user", texto: limpo, por_voz: porVoz ? 1 : 0, criado_em: "" };
@@ -77,7 +92,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
 
   function submeter(e: FormEvent) {
     e.preventDefault();
-    enviar(texto, false);
+    if (!aPensar) enviar(texto, false);
   }
 
   function sairModoVoz() {
@@ -85,21 +100,35 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     setModoVoz(false);
   }
 
-  async function ouvir() {
+  async function ouvir(soSeAtivo = false): Promise<boolean> {
     setErro("");
     calar();
     try {
-      await gravador.comecar({ aoSilencio: terminarDeFalar, silencioMs: 3000 });
+      const ok = await gravador.comecar({ aoSilencio: terminarDeFalar, silencioMs: 3000, soSeAtivo });
+      if (!ok) sairModoVoz();
+      return ok;
     } catch {
-      setErro("Não consegui usar o microfone. Verifica a permissão no Chrome.");
+      if (!soSeAtivo) setErro("Não consegui usar o microfone. Verifica a permissão no Chrome.");
       sairModoVoz();
+      return false;
     }
+  }
+
+  async function entrarModoVoz(automatico = false) {
+    if (automatico) {
+      // Sem permissão já dada não se pede nada ao abrir; espera-se pelo toque na bola
+      const estado = await navigator.permissions?.query({ name: "microphone" as PermissionName }).catch(() => null);
+      if (estado?.state !== "granted") return;
+    }
+    modoVozRef.current = true;
+    setModoVoz(true);
+    await ouvir(automatico);
   }
 
   async function terminarDeFalar(falou = true) {
     const audio = await gravador.parar();
     if (!falou || !audio) {
-      sairModoVoz(); // ficou calado: sai do modo de voz sem fazer barulho
+      sairModoVoz(); // ficou calado: para sem fazer barulho
       return;
     }
     setAPensar(true);
@@ -108,7 +137,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
       setAPensar(false);
       if (transcrito) await enviar(transcrito, true);
       else {
-        setErro("Não percebi o que disseste. Tenta outra vez.");
+        setErro("Não percebi. Toca na bola e tenta outra vez.");
         sairModoVoz();
       }
     } catch (e) {
@@ -126,127 +155,131 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     falavaAntes.current = falando;
   }, [falando]);
 
-  function microfone() {
-    if (gravador.aGravar) {
-      terminarDeFalar(true); // já acabou de falar: envia sem esperar pelo silêncio
-      return;
-    }
-    if (modoVoz) {
-      // A pensar ou a falar: toque para sair
+  function tocarNaBola() {
+    if (modoVoz || falando || gravador.aGravar) {
       sairModoVoz();
+      gravador.parar();
       calar();
       return;
     }
-    modoVozRef.current = true;
-    setModoVoz(true);
-    ouvir();
+    if (!aPensar) entrarModoVoz();
   }
 
   const estadoOrbe: EstadoOrbe = gravador.aGravar ? "ouvir" : aPensar ? "pensar" : falando ? "falar" : "repouso";
-  const legenda = { ouvir: "A ouvir…", pensar: "A pensar…", falar: "", repouso: modoVoz ? "" : "Toca na bola para falar" }[estadoOrbe];
-  const vazia = mensagens.length === 0;
+  const ultima = [...mensagens].reverse().find((m) => m.papel === "assistant");
+  const whatsapp = ultima ? linkWhatsApp(ultima.texto) : null;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between px-6 pb-1 pt-[max(1rem,env(safe-area-inset-top))]">
-        <h1 className="text-xs tracking-[0.4em] text-suave">TRINITY</h1>
-        <button onClick={alternarVoz} aria-label={vozLigada ? "Desligar a voz" : "Ligar a voz"} className="p-2 text-suave">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 5 6 9H3v6h3l5 4V5Z" />
-            {vozLigada ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /> : <path d="m16 9 5 6m0-6-5 6" />}
+    <div className="relative flex h-full flex-col">
+      <header className="flex justify-end px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <button onClick={() => setMenu("conversa")} aria-label="Abrir menu" className="p-3 text-suave">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M4 7h16M4 12h16M4 17h10" />
           </svg>
         </button>
       </header>
 
-      <div className={`flex shrink-0 flex-col items-center transition-all duration-500 ${vazia ? "flex-1 justify-center" : ""}`}>
-        <button
-          onClick={() => {
-            if (modoVoz || falando) {
-              sairModoVoz();
-              if (gravador.aGravar) gravador.parar();
-              calar();
-            } else microfone();
-          }}
-          aria-label={modoVoz ? "Terminar conversa por voz" : "Falar com a Trinity"}
-          className={vazia ? "h-72 w-72" : "h-44 w-44"}
-        >
-          <Orbe estado={estadoOrbe} nivelMic={gravador.nivel} className="h-full w-full" />
-        </button>
-        <p className="h-5 text-xs tracking-[0.2em] text-suave">{legenda}</p>
-        {vazia && (
-          <div className="mt-8 flex flex-col items-center gap-3 px-6">
-            {SUGESTOES.map((s) => (
-              <button key={s} onClick={() => enviar(s, false)} className="text-sm text-suave active:text-texto">
-                {s}
-              </button>
-            ))}
-          </div>
+      <button
+        onClick={tocarNaBola}
+        aria-label={modoVoz ? "Parar a conversa por voz" : "Falar com a Trinity"}
+        className="flex min-h-0 flex-1 items-center justify-center"
+      >
+        <Orbe estado={estadoOrbe} nivelMic={gravador.nivel} className="aspect-square w-[min(100vw,72vh)]" />
+      </button>
+
+      <div className="flex min-h-24 flex-col items-center justify-start gap-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        {erro && <p className="text-center text-sm text-amber-300">{erro}</p>}
+        {whatsapp && !gravador.aGravar && !aPensar && (
+          <a
+            href={whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full bg-[#25d366] px-6 py-3 text-sm font-medium text-black"
+          >
+            Abrir no WhatsApp
+          </a>
         )}
       </div>
 
-      {!vazia && (
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-4">
-          {mensagens.map((m) =>
-            m.papel === "user" ? (
-              <p key={m.id} className="ml-auto max-w-[85%] text-right text-[15px] text-suave">
-                {m.texto}
-              </p>
-            ) : (
-              <div key={m.id} className="markdown max-w-[95%] text-[15px] leading-7 text-texto/90">
-                <Texto>{m.texto}</Texto>
+      {menu && (
+        <div className="absolute inset-0 z-10 flex flex-col bg-fundo">
+          <header className="flex items-center gap-6 px-6 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
+            {(
+              [
+                ["conversa", "Conversa"],
+                ["hoje", "O meu dia"],
+              ] as const
+            ).map(([id, nome]) => (
+              <button key={id} onClick={() => setMenu(id)} className={`py-2 text-sm ${menu === id ? "text-texto" : "text-suave"}`}>
+                {nome}
+                <span className={`mx-auto mt-1 block h-1 w-1 rounded-full ${menu === id ? "bg-destaque" : "bg-transparent"}`} />
+              </button>
+            ))}
+            <div className="ml-auto flex items-center">
+              <button onClick={alternarVoz} aria-label={vozLigada ? "Desligar a voz" : "Ligar a voz"} className="p-2 text-suave">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  {vozLigada ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /> : <path d="m16 9 5 6m0-6-5 6" />}
+                </svg>
+              </button>
+              <button onClick={() => setMenu(null)} aria-label="Fechar menu" className="p-2 text-suave">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          {menu === "hoje" ? (
+            <div className="min-h-0 flex-1">
+              <Hoje aoErro={aoErro} irParaConversa={() => setMenu(null)} />
+            </div>
+          ) : (
+            <>
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-4">
+                {mensagens.length === 0 && <p className="pt-10 text-center text-sm text-suave">Ainda não há conversa.</p>}
+                {mensagens.map((m) =>
+                  m.papel === "user" ? (
+                    <p key={m.id} className="ml-auto max-w-[85%] text-right text-[15px] text-suave">
+                      {m.texto}
+                    </p>
+                  ) : (
+                    <div key={m.id} className="markdown max-w-[95%] text-[15px] leading-7 text-texto/90">
+                      <Texto>{m.texto}</Texto>
+                    </div>
+                  ),
+                )}
+                {aPensar && <p className="text-sm text-suave">A pensar…</p>}
+                <div ref={fundo} />
               </div>
-            ),
+              <form onSubmit={submeter} className="flex items-end gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+                <textarea
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!aPensar) enviar(texto, false);
+                    }
+                  }}
+                  rows={1}
+                  placeholder="Escrever à Trinity"
+                  className="max-h-32 min-h-12 flex-1 resize-none rounded-3xl border border-linha bg-white/[0.03] px-5 py-3 text-texto placeholder:text-suave outline-none focus:border-destaque/50"
+                />
+                <button
+                  disabled={aPensar || !texto.trim()}
+                  aria-label="Enviar"
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-destaque text-black disabled:opacity-30"
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </svg>
+                </button>
+              </form>
+            </>
           )}
-          {erro && <p className="text-sm text-amber-300">{erro}</p>}
-          <div ref={fundo} />
         </div>
       )}
-      {vazia && erro && <p className="px-6 pb-2 text-center text-sm text-amber-300">{erro}</p>}
-
-      <form onSubmit={submeter} className="flex items-end gap-3 px-4 pb-2 pt-2">
-        <textarea
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              enviar(texto, false);
-            }
-          }}
-          rows={1}
-          placeholder="Escreve ou fala"
-          className="max-h-32 min-h-12 flex-1 resize-none rounded-3xl border border-linha bg-white/[0.03] px-5 py-3 text-texto placeholder:text-suave outline-none focus:border-destaque/50"
-        />
-        {texto.trim() ? (
-          <button disabled={aPensar} aria-label="Enviar" className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-destaque text-black disabled:opacity-30">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={microfone}
-            disabled={aPensar && !modoVoz}
-            aria-label={gravador.aGravar ? "Enviar já" : modoVoz ? "Terminar conversa por voz" : "Falar"}
-            className={`grid h-12 w-12 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-30 ${
-              gravador.aGravar ? "bg-red-500 text-white" : modoVoz ? "bg-white/10 text-texto" : "bg-destaque text-black"
-            }`}
-          >
-            {gravador.aGravar ? (
-              <span className="h-4 w-4 rounded-sm bg-white" />
-            ) : modoVoz ? (
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M6 6l12 12M18 6 6 18" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
-                <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
-              </svg>
-            )}
-          </button>
-        )}
-      </form>
     </div>
   );
 }
