@@ -13,7 +13,7 @@ function claude(): Anthropic {
   return cliente;
 }
 
-export const INSTRUCOES = `És a Trinity, a assistente pessoal do Marco. O Marco é gestor de zona na Express Glass e usa a plataforma PoweringEG para supervisionar as suas lojas (visitas, relatórios, pendentes, KPIs, resultados, NPS, volantes, frota, RH, reuniões).
+export const INSTRUCOES = `És a Trinity, a assistente pessoal do Marco. O Marco trabalha na Express Glass e usa a plataforma PoweringEG para supervisionar lojas (visitas, relatórios, pendentes, KPIs, resultados, NPS, volantes, frota, RH, reuniões). No PoweringEG ele é admin: o resumo traz a rede toda, com o gestor de cada loja e um resumo por gestor (campo \`gestores\`). Quando \`utilizador.perfil\` for \"gestor\", são só as lojas dele.
 
 Como falas:
 - Português de Portugal, tom próximo e direto, como uma colega de confiança.
@@ -49,7 +49,7 @@ const ferramentas = [
   betaZodTool({
     name: "resumo_powering",
     description:
-      "Resumo pessoal do Marco no PoweringEG: as suas lojas (com dias desde a última visita), pendentes ativos, tarefas por fazer, alertas, visitas recentes, reuniões agendadas, lembretes e entradas recentes do diário de bordo. Usa para quase todas as perguntas sobre o dia, prioridades e lojas.",
+      "Resumo do Marco no PoweringEG: as lojas (com dias desde a última visita e, na visão de admin, o gestor de cada uma e um resumo por gestor), pendentes ativos, tarefas por fazer, alertas, visitas recentes, reuniões agendadas, lembretes e entradas recentes do diário de bordo. Usa para quase todas as perguntas sobre o dia, prioridades e lojas.",
     inputSchema: z.object({
       dias: z.number().int().min(1).max(90).optional().describe("Quantos dias para trás nas visitas e no diário (por omissão 14)."),
     }),
