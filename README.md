@@ -20,7 +20,7 @@ Próximas fases: Google Calendar e Gmail, sugestões do YouTube, coaching. Ver o
 ## Pôr a funcionar no Railway
 1. No Railway: **New Project → Deploy from GitHub repo → OLDmamorim/Trinity**.
 2. No serviço, **Settings → Volumes**: adicionar um volume montado em `/data`.
-3. **Variables**: copiar as de `.env.example` e preencher (`DATA_DIR=/data`). Para as chaves VAPID, correr `npx web-push generate-vapid-keys` uma vez.
+3. **Variables**: `TRINITY_PASSWORD`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `POWERING_URL`, `POWERING_API_KEY` e `DATA_DIR=/data`. O segredo da sessão e as chaves das notificações são gerados pela app na primeira vez e ficam no volume.
 4. No PoweringEG (admin → Chaves de API), criar uma chave com a permissão **assistente** e colocá-la em `POWERING_API_KEY`. A chave fica associada a quem a cria, por isso deve ser criada pelo Marco.
 5. **Settings → Networking → Generate Domain** e abrir esse endereço no Chrome do telemóvel.
 6. No Chrome: menu ⋮ → **Instalar app** (ou "Adicionar ao ecrã principal"). Depois, no ecrã Hoje, tocar em "Ativar notificações".

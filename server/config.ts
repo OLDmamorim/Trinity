@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 // Configuração lida das variáveis de ambiente (ver .env.example).
 
 function opcional(nome: string, omissao = ""): string {
@@ -36,13 +38,26 @@ export const config = {
   vapidContacto: opcional("VAPID_CONTACT", "mailto:trinity@example.com"),
 };
 
+/**
+ * O segredo da sessão e as chaves das notificações não precisam de ser configurados:
+ * se não vierem nas variáveis, a app gera-os uma vez e guarda-os na base de dados.
+ */
+export function completarSegredos(segredo: (nome: string, gerar: () => string) => string, gerarVapid: () => { publicKey: string; privateKey: string }) {
+  if (config.segredoSessao.length < 32) {
+    config.segredoSessao = segredo("sessao", () => crypto.randomBytes(32).toString("hex"));
+  }
+  if (!config.vapidPublica || !config.vapidPrivada) {
+    const par = JSON.parse(segredo("vapid", () => JSON.stringify(gerarVapid()))) as { publicKey: string; privateKey: string };
+    config.vapidPublica = par.publicKey;
+    config.vapidPrivada = par.privateKey;
+  }
+}
+
 export function verificarConfig(): string[] {
   const avisos: string[] = [];
   if (!config.palavraPasse) avisos.push("TRINITY_PASSWORD não definida: ninguém consegue entrar.");
-  if (config.segredoSessao.length < 32) avisos.push("TRINITY_SESSION_SECRET em falta ou curta (mínimo 32 caracteres).");
   if (!process.env.ANTHROPIC_API_KEY) avisos.push("ANTHROPIC_API_KEY não definida: o chat não funciona.");
   if (!config.openaiKey) avisos.push("OPENAI_API_KEY não definida: a voz não funciona.");
   if (!config.poweringUrl || !config.poweringKey) avisos.push("POWERING_URL/POWERING_API_KEY em falta: sem dados do PoweringEG.");
-  if (!config.vapidPublica || !config.vapidPrivada) avisos.push("Chaves VAPID em falta: sem notificações push.");
   return avisos;
 }
