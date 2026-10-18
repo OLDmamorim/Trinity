@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import Markdown from "react-markdown";
+import Texto from "../Texto";
 import { api, type Briefing } from "../api";
 import { calar, falar } from "../fala";
 import { ativarNotificacoes, notificacoesSuportadas } from "../notificacoes";
@@ -107,7 +107,7 @@ export default function Hoje({ aoErro, irParaConversa }: { aoErro: (e: unknown) 
           <p className="text-suave">A carregar…</p>
         ) : briefing ? (
           <div className="markdown text-[15px] leading-7 text-texto/90">
-            <Markdown>{briefing.texto}</Markdown>
+            <Texto>{briefing.texto}</Texto>
           </div>
         ) : (
           <p className="text-suave">Ainda não há briefing para hoje. Toca em Preparar.</p>

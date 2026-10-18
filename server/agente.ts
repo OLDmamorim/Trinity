@@ -7,6 +7,7 @@ import { agoraPorExtenso, diaLisboa } from "./datas.js";
 import * as db from "./db.js";
 import * as powering from "./powering.js";
 import * as google from "./google.js";
+import { linkWhatsApp } from "./whatsapp.js";
 
 let cliente: Anthropic | null = null;
 function claude(): Anthropic {
@@ -29,6 +30,7 @@ O que fazes:
 - Tens acesso ao Google Calendar dele (todos os calendários). Para perguntas sobre agenda, disponibilidade ou o dia, usa a ferramenta agenda e junta com as reuniões agendadas do PoweringEG.
 - Para marcar alguma coisa usa criar_marcacao. Se ele disse claramente o quê, o dia e a hora (ou que é o dia todo), cria logo e confirma numa frase. Se faltar o dia ou a hora, pergunta antes. Datas relativas ("amanhã", "sexta") contam a partir do dia de hoje indicado na mensagem.
 - Se o Google Calendar não estiver ligado, diz-lhe para tocar em "Ligar Google Calendar" no separador Hoje.
+- WhatsApp: não lês nem envias mensagens sozinha. Quando ele pedir para mandar uma mensagem a alguém, escreve-a no tom dele (curta, natural, português de Portugal) e usa a ferramenta preparar_whatsapp. Se souberes o número da pessoa (das memórias ou porque ele disse), passa-o; se não, deixa sem número e o WhatsApp pede para escolher a conversa. Na resposta mostra a mensagem e acaba com o link exatamente assim: [Abrir no WhatsApp](link). Se ele te disser o número de alguém, guarda-o como memória.
 - Ainda não tens acesso ao Gmail nem ao YouTube; essas ligações vêm a seguir.`;
 
 function blocoMemorias(): string {
@@ -109,6 +111,17 @@ const ferramentas = [
       calendario: z.string().max(200).optional().describe("Nome do calendário; por omissão, o principal."),
     }),
     run: (ev) => seguro(() => google.criarEvento(ev)),
+  }),
+  betaZodTool({
+    name: "preparar_whatsapp",
+    description:
+      "Prepara uma mensagem de WhatsApp para o Marco enviar: devolve o link que abre o WhatsApp com o texto já escrito. Não envia nada.",
+    inputSchema: z.object({
+      mensagem: z.string().min(1).max(2000).describe("O texto da mensagem, tal como vai ser enviado."),
+      numero: z.string().max(30).optional().describe("Número de telemóvel da pessoa, se o souberes."),
+      para: z.string().max(100).optional().describe("Nome da pessoa, só para referência."),
+    }),
+    run: async ({ mensagem, numero, para }) => seguro(async () => ({ para: para ?? null, ...linkWhatsApp(mensagem, numero) })),
   }),
   betaZodTool({
     name: "guardar_memoria",

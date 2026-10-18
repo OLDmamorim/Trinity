@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Markdown from "react-markdown";
+import Texto from "../Texto";
 import { api, type Mensagem } from "../api";
 import { useGravador } from "../gravador";
 import { calar, falar } from "../fala";
@@ -142,7 +142,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
               </p>
             ) : (
               <div key={m.id} className="markdown max-w-[95%] text-[15px] leading-7 text-texto/90">
-                <Markdown>{m.texto}</Markdown>
+                <Texto>{m.texto}</Texto>
               </div>
             ),
           )}
