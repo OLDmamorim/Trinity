@@ -31,6 +31,10 @@ export function abrirDb(ficheiro?: string): DatabaseSync {
       texto TEXT NOT NULL,
       criado_em TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS segredos (
+      nome TEXT PRIMARY KEY,
+      valor TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS subscricoes_push (
       endpoint TEXT PRIMARY KEY,
       dados TEXT NOT NULL,
@@ -107,4 +111,15 @@ export function listarSubscricoes(): { endpoint: string; dados: string }[] {
 
 export function apagarSubscricao(endpoint: string) {
   abrirDb().prepare("DELETE FROM subscricoes_push WHERE endpoint = ?").run(endpoint);
+}
+
+// ---------- Segredos gerados pela própria app ----------
+/** Devolve o segredo guardado com este nome, ou cria-o com `gerar` na primeira vez. */
+export function segredo(nome: string, gerar: () => string): string {
+  const d = abrirDb();
+  const r = d.prepare("SELECT valor FROM segredos WHERE nome = ?").get(nome) as { valor: string } | undefined;
+  if (r) return r.valor;
+  const valor = gerar();
+  d.prepare("INSERT INTO segredos (nome, valor) VALUES (?, ?)").run(nome, valor);
+  return valor;
 }

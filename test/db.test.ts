@@ -17,3 +17,13 @@ describe("base de dados", () => {
     expect(db.apagarMemoria(m.id)).toBe(false);
   });
 });
+
+describe("segredos", () => {
+  it("gera uma vez e devolve sempre o mesmo", () => {
+    let chamadas = 0;
+    const gerar = () => `valor-${++chamadas}`;
+    expect(db.segredo("teste", gerar)).toBe("valor-1");
+    expect(db.segredo("teste", gerar)).toBe("valor-1");
+    expect(chamadas).toBe(1);
+  });
+});
