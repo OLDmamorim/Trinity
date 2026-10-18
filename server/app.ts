@@ -15,8 +15,11 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
-function erroParaUtilizador(e: unknown): string {
+export function erroParaUtilizador(e: unknown): string {
   console.error(e);
+  if (e instanceof Error && /credit balance is too low/i.test(e.message)) {
+    return "A conta da Anthropic ficou sem créditos. Carrega créditos em console.anthropic.com (Plans & Billing) e tenta outra vez.";
+  }
   if (e instanceof Anthropic.AuthenticationError || (e instanceof Error && /authentication method/i.test(e.message))) {
     return "A Trinity ainda não está ligada ao Claude (falta a chave ANTHROPIC_API_KEY no servidor).";
   }
