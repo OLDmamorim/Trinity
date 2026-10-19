@@ -8,8 +8,7 @@ import crypto from "node:crypto";
 import { entrar, sair, exigirSessao } from "./auth.js";
 import * as db from "./db.js";
 import { responder } from "./agente.js";
-import { transcrever, sintetizar, textoParaFalar } from "./voz.js";
-import { Readable } from "node:stream";
+import { transcrever } from "./voz.js";
 import { gerarBriefing } from "./briefing.js";
 import { chavePublica } from "./push.js";
 import { diaLisboa } from "./datas.js";
@@ -73,36 +72,6 @@ export function criarApp(pastaCliente?: string) {
       res.json({ texto });
     } catch (e) {
       res.status(502).json({ erro: erroParaUtilizador(e) });
-    }
-  });
-
-  // A fala em dois passos: o POST guarda o texto e devolve um id; o <audio> pede o
-  // GET com esse id e começa a tocar enquanto o mp3 ainda está a chegar.
-  const falasPendentes = new Map<string, { texto: string; ate: number }>();
-  api.post("/fala", (req, res) => {
-    const texto = typeof req.body?.texto === "string" ? textoParaFalar(req.body.texto) : "";
-    if (!texto) return res.status(400).json({ erro: "Texto vazio." });
-    if (!config.openaiKey) return res.status(503).json({ erro: "Voz natural não configurada." });
-    const agora = Date.now();
-    for (const [id, f] of falasPendentes) if (f.ate < agora) falasPendentes.delete(id);
-    const id = crypto.randomUUID();
-    falasPendentes.set(id, { texto, ate: agora + 60_000 });
-    res.json({ id });
-  });
-
-  api.get("/fala/:id", async (req, res) => {
-    const fala = falasPendentes.get(req.params.id);
-    if (!fala) return res.status(404).end();
-    falasPendentes.delete(req.params.id);
-    const parar = new AbortController();
-    res.on("close", () => parar.abort());
-    try {
-      const resp = await sintetizar(fala.texto, AbortSignal.any([parar.signal, AbortSignal.timeout(60_000)]));
-      res.setHeader("Content-Type", "audio/mpeg");
-      res.setHeader("Cache-Control", "no-store");
-      Readable.fromWeb(resp.body as never).on("error", () => res.end()).pipe(res);
-    } catch (e) {
-      if (!res.headersSent) res.status(502).json({ erro: erroParaUtilizador(e) });
     }
   });
 
