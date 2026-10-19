@@ -8,6 +8,7 @@ import * as db from "./db.js";
 import * as powering from "./powering.js";
 import * as google from "./google.js";
 import { linkWhatsApp } from "./whatsapp.js";
+import * as tempo from "./tempo.js";
 
 let cliente: Anthropic | null = null;
 function claude(): Anthropic {
@@ -111,6 +112,16 @@ const ferramentas = [
       calendario: z.string().max(200).optional().describe("Nome do calendário; por omissão, o principal."),
     }),
     run: (ev) => seguro(() => google.criarEvento(ev)),
+  }),
+  betaZodTool({
+    name: "meteorologia",
+    description:
+      "Tempo atual e previsão diária para um local (cidade ou vila; por omissão Braga). Usa quando o Marco perguntar pelo tempo, por chuva, ou ao planear visitas e deslocações.",
+    inputSchema: z.object({
+      local: z.string().min(2).max(100).optional().describe("Cidade ou vila, ex.: Viana do Castelo."),
+      dias: z.number().int().min(1).max(16).optional().describe("Quantos dias de previsão a partir de hoje (por omissão 3)."),
+    }),
+    run: ({ local, dias }) => seguro(() => tempo.previsao(local, dias)),
   }),
   betaZodTool({
     name: "preparar_whatsapp",
