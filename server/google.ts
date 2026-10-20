@@ -206,3 +206,9 @@ export async function criarEvento(ev: NovoEvento) {
   });
   return { criado: true, calendario: nomeCalendario, titulo: ev.titulo, inicio: ev.inicio, fim, link: criado.htmlLink ?? null };
 }
+
+/** O endereço de email da conta Google ligada (o id do calendário principal). */
+export async function emailDaConta(): Promise<string | null> {
+  if (!googleLigado()) return null;
+  return (await calendarios()).find((c) => c.primary)?.id ?? null;
+}

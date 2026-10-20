@@ -33,6 +33,11 @@ export const config = {
   googleClientSecret: opcional("GOOGLE_CLIENT_SECRET"),
   urlPublico: (opcional("TRINITY_URL") || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000")).replace(/\/+$/, ""),
 
+  // Emails ao Marco pelo Resend, do mesmo noreply do PoweringEG.
+  resendKey: opcional("RESEND_API_KEY"),
+  emailDe: opcional("EMAIL_FROM", "Trinity <noreply@poweringeg.pt>"),
+  emailPara: opcional("EMAIL_PARA"),
+
   // Briefing diário: expressão cron, hora de Lisboa. Por omissão, 8h de segunda a sexta.
   briefingCron: opcional("BRIEFING_CRON", "0 8 * * 1-5"),
   fusoHorario: "Europe/Lisbon",

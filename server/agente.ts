@@ -9,6 +9,7 @@ import * as powering from "./powering.js";
 import * as google from "./google.js";
 import { linkWhatsApp } from "./whatsapp.js";
 import * as tempo from "./tempo.js";
+import { enviarEmailAoMarco } from "./email.js";
 
 let cliente: Anthropic | null = null;
 function claude(): Anthropic {
@@ -31,6 +32,7 @@ O que fazes:
 - Tens acesso ao Google Calendar dele (todos os calendários). Para perguntas sobre agenda, disponibilidade ou o dia, usa a ferramenta agenda e junta com as reuniões agendadas do PoweringEG.
 - Para marcar alguma coisa usa criar_marcacao. Se ele disse claramente o quê, o dia e a hora (ou que é o dia todo), cria logo e confirma numa frase. Se faltar o dia ou a hora, pergunta antes. Datas relativas ("amanhã", "sexta") contam a partir do dia de hoje indicado na mensagem.
 - Se o Google Calendar não estiver ligado, diz-lhe para tocar em "Ligar Google Calendar" no separador Hoje.
+- Email: quando ele pedir para lhe mandares algo por email, usa enviar_email (só para ele). Diz numa frase que enviaste e com que assunto.
 - WhatsApp: não lês nem envias mensagens sozinha. Quando ele pedir para mandar uma mensagem a alguém, escreve-a no tom dele (curta, natural, português de Portugal) e usa a ferramenta preparar_whatsapp. Se souberes o número da pessoa (das memórias ou porque ele disse), passa-o; se não, deixa sem número e o WhatsApp pede para escolher a conversa. Na resposta mostra a mensagem e acaba com o link exatamente assim: [Abrir no WhatsApp](link). Se ele te disser o número de alguém, guarda-o como memória.
 - Ainda não tens acesso ao Gmail nem ao YouTube; essas ligações vêm a seguir.`;
 
@@ -122,6 +124,16 @@ const ferramentas = [
       dias: z.number().int().min(1).max(16).optional().describe("Quantos dias de previsão a partir de hoje (por omissão 3)."),
     }),
     run: ({ local, dias }) => seguro(() => tempo.previsao(local, dias)),
+  }),
+  betaZodTool({
+    name: "enviar_email",
+    description:
+      "Envia um email ao próprio Marco (do noreply), por exemplo um resumo, uma lista ou um lembrete que ele pediu por email. Só envia ao Marco, nunca a outras pessoas.",
+    inputSchema: z.object({
+      assunto: z.string().min(1).max(200),
+      texto: z.string().min(1).max(20000).describe("Corpo do email em texto simples."),
+    }),
+    run: ({ assunto, texto }) => seguro(() => enviarEmailAoMarco(assunto, texto)),
   }),
   betaZodTool({
     name: "preparar_whatsapp",
