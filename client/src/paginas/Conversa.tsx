@@ -33,7 +33,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   const falando = useFalando();
   const fundo = useRef<HTMLDivElement>(null);
 
-  // Modo conversa por voz: fala-se, ao fim de 3 segundos calado ela responde em voz alta
+  // Modo conversa por voz: fala-se, ao fim de 1,2 segundos calado ela responde em voz alta
   // e volta a ouvir, até se tocar na bola para parar.
   const [modoVoz, setModoVoz] = useState(false);
   const modoVozRef = useRef(false);
@@ -105,7 +105,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     setErro("");
     calar();
     try {
-      const ok = await gravador.comecar({ aoSilencio: terminarDeFalar, silencioMs: 3000, soSeAtivo });
+      const ok = await gravador.comecar({ aoSilencio: terminarDeFalar, silencioMs: 1200, soSeAtivo });
       if (!ok) sairModoVoz();
       return ok;
     } catch {
@@ -157,7 +157,17 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   }, [falando]);
 
   function tocarNaBola() {
-    if (modoVoz || falando || gravador.aGravar) {
+    // Um toque durante a resposta interrompe a voz e começa imediatamente a ouvir.
+    if (falando) {
+      calar();
+      if (!gravador.aGravar) {
+        modoVozRef.current = true;
+        setModoVoz(true);
+        void ouvir();
+      }
+      return;
+    }
+    if (modoVoz || gravador.aGravar) {
       sairModoVoz();
       gravador.parar();
       calar();
