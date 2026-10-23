@@ -7,6 +7,7 @@ import { useGravador } from "../gravador";
 import { calar, falar } from "../fala";
 import Orbe, { type EstadoOrbe } from "../Orbe";
 import { useFalando } from "../useFalando";
+import { useVozRealtime } from "../useVozRealtime";
 import { useEcraLigado } from "../useEcraLigado";
 import Hoje from "./Hoje";
 
@@ -31,6 +32,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   });
   const gravador = useGravador();
   const falando = useFalando();
+  const realtime = useVozRealtime(aoErro);
   const fundo = useRef<HTMLDivElement>(null);
 
   // Modo conversa por voz: fala-se, ao fim de 1,2 segundos calado ela responde em voz alta
@@ -48,6 +50,7 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
     // Abre logo a ouvir, se o browser já deixar usar o microfone sem um toque
     entrarModoVoz(true);
     return () => {
+      realtime.desligar();
       modoVozRef.current = false;
       gravador.parar();
       calar();
@@ -161,6 +164,10 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
   }, [falando]);
 
   function tocarNaBola() {
+    if (realtime.estado !== "desligado") {
+      realtime.desligar();
+      return;
+    }
     // Um toque durante a resposta interrompe a voz e começa imediatamente a ouvir.
     if (falando) {
       ignorarRetoma.current = true;
@@ -219,6 +226,9 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
       </button>
 
       <div className="flex flex-col items-center justify-start gap-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <button type="button" onClick={() => { if (realtime.estado !== "desligado") realtime.desligar(); else { sairModoVoz(); void gravador.parar(); calar(); void realtime.ligar(); } }} className="rounded-full border border-white/30 px-4 py-2 text-sm text-texto" aria-label="Alternar voz em tempo real">
+          {realtime.estado === "ligado" ? "Terminar conversa em tempo real" : realtime.estado === "ligar" ? "A ligar voz em tempo real…" : "Voz em tempo real"}
+        </button>
         {erro && <p className="text-center text-sm text-amber-300">{erro}</p>}
         {whatsapp && !gravador.aGravar && !aPensar && (
           <a

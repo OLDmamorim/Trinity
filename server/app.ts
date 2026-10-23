@@ -47,6 +47,45 @@ export function criarApp(pastaCliente?: string) {
 
   api.get("/sessao", (_req, res) => res.json({ ok: true }));
 
+  // Emite um token efémero para WebRTC. A chave OpenAI nunca sai do servidor.
+  api.post("/realtime/sessao", async (_req, res) => {
+    if (!config.openaiKey) return res.status(503).json({ erro: "Falta OPENAI_API_KEY no Railway." });
+    try {
+      const resposta = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          session: {
+            type: "realtime",
+            model: "gpt-realtime",
+            instructions: `És a Trinity, assistente pessoal do Marco. Fala português de Portugal, de forma natural e concisa. Para qualquer pergunta factual sobre o Marco, as lojas, agenda, tarefas, memórias ou PoweringEG, chama a ferramenta consultar_trinity com a pergunta exata. Nunca inventes dados. Quando a ferramenta responder, transmite o resultado em voz natural, sem repetir desnecessariamente.`,
+            audio: {
+              output: { voice: "marin" },
+              input: { turn_detection: { type: "server_vad", interrupt_response: true, create_response: true } },
+            },
+            tools: [{
+              type: "function",
+              name: "consultar_trinity",
+              description: "Consulta o cérebro da Trinity e as ferramentas seguras do servidor (PoweringEG, Google Calendar, memórias). Usa para pedidos sobre dados, ações e histórico.",
+              parameters: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"], additionalProperties: false },
+            }],
+            tool_choice: "auto",
+          },
+        }),
+      });
+      const dados = await resposta.json() as { value?: string; client_secret?: { value?: string }; error?: { message?: string } };
+      if (!resposta.ok) return res.status(502).json({ erro: dados.error?.message || "Não foi possível iniciar a voz Realtime." });
+      const segredo = dados.value ?? dados.client_secret?.value;
+      if (!segredo) return res.status(502).json({ erro: "A OpenAI não devolveu um token de sessão." });
+      res.json({ client_secret: segredo });
+    } catch (e) {
+      res.status(502).json({ erro: erroParaUtilizador(e) });
+    }
+  });
+
   api.get("/conversa", (_req, res) => res.json({ mensagens: db.ultimasMensagens(100) }));
 
   api.delete("/conversa", (_req, res) => {
