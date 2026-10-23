@@ -23,6 +23,7 @@ export const api = {
   entrar: (palavraPasse: string) => pedir<{ ok: true }>("/entrar", json({ palavraPasse })),
   sair: () => pedir<{ ok: true }>("/sair", { method: "POST" }),
   sessao: () => pedir<{ ok: true }>("/sessao"),
+  sessaoRealtime: () => pedir<{ client_secret: string }>("/realtime/sessao", { method: "POST" }),
   conversa: () => pedir<{ mensagens: Mensagem[] }>("/conversa"),
   apagarConversa: () => pedir<{ ok: true }>("/conversa", { method: "DELETE" }),
   enviar: (texto: string, porVoz: boolean) => pedir<{ resposta: string }>("/conversa", json({ texto, porVoz })),
