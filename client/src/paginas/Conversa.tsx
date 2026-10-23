@@ -151,14 +151,19 @@ export default function Conversa({ aoErro }: { aoErro: (e: unknown) => void }) {
 
   // Quando ela acaba de falar, volta a ouvir se o modo de voz estiver ligado
   const falavaAntes = useRef(false);
+  const ignorarRetoma = useRef(false);
   useEffect(() => {
-    if (falavaAntes.current && !falando && modoVozRef.current) ouvir();
+    if (falavaAntes.current && !falando && modoVozRef.current) {
+      if (ignorarRetoma.current) ignorarRetoma.current = false;
+      else void ouvir();
+    }
     falavaAntes.current = falando;
   }, [falando]);
 
   function tocarNaBola() {
     // Um toque durante a resposta interrompe a voz e começa imediatamente a ouvir.
     if (falando) {
+      ignorarRetoma.current = true;
       calar();
       if (!gravador.aGravar) {
         modoVozRef.current = true;
