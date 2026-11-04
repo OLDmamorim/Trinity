@@ -6,7 +6,6 @@ process.env.TRINITY_SESSION_SECRET = "s".repeat(40);
 
 vi.mock("../server/agente.js", () => ({
   responder: vi.fn(async (texto: string) => `Eco: ${texto}`),
-  instrucoesRealtime: vi.fn(() => "Instruções de teste"),
   gerarTextoBriefing: vi.fn(async () => "**Prioridade:** visitar a loja de Braga."),
 }));
 
