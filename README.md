@@ -4,12 +4,15 @@ A assistente pessoal do Marco: uma app no telemóvel (instalável a partir do Ch
 
 ## O que já faz (fase 1)
 - **Hoje**: briefing do dia preparado com os dados do PoweringEG (prioridades, lojas sem visita, pendentes, reuniões). Pode ser ouvido em voz alta.
-- **Conversa**: chat por texto ou voz (botão de microfone). Quando falas por voz, a resposta é lida em voz alta pelo telemóvel.
+- **Conversa por voz**: o ecrã principal é a bola. Fala-se, e ao fim de um silêncio curto a Trinity responde em voz alta (voz do telemóvel) e volta a ouvir. Um toque na bola interrompe a resposta. Por voz usa um modelo mais rápido (`TRINITY_MODEL_VOZ`, por omissão `claude-sonnet-5-5`).
+- **Conversa escrita** e **O meu dia** ficam no menu do canto.
+- **Google Calendar**: lê todos os calendários e cria marcações.
+- **Meteorologia** (Open-Meteo), **emails ao Marco** (Resend, do noreply) e **mensagens de WhatsApp** preparadas (a Trinity escreve, o Marco envia).
 - **Notificação da manhã** com o briefing (8h, segunda a sexta, configurável).
 - **Memória**: a Trinity guarda preferências e objetivos que lhe contas.
 - Acesso só com palavra-passe (o Chrome guarda-a e preenche-a com a impressão digital).
 
-Próximas fases: Google Calendar e Gmail, sugestões do YouTube, coaching. Ver o plano no projeto.
+Próximas fases: Gmail, sugestões do YouTube, coaching.
 
 ## Como funciona
 - `client/`: app React (Vite + Tailwind) instalável (PWA), com service worker para notificações.
