@@ -20,6 +20,9 @@ export const config = {
   // Claude
   modelo: opcional("TRINITY_MODEL", "claude-opus-5-5"),
   esforco: opcional("TRINITY_EFFORT", "medium") as "low" | "medium" | "high",
+  // Na voz a rapidez conta mais: modelo e esforço próprios (o Marco está à espera a ouvir).
+  modeloVoz: opcional("TRINITY_MODEL_VOZ", "claude-sonnet-5-5"),
+  esforcoVoz: opcional("TRINITY_EFFORT_VOZ", "low") as "low" | "medium" | "high",
 
   // Transcrição de voz (OpenAI)
   openaiKey: opcional("OPENAI_API_KEY"),

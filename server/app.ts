@@ -7,7 +7,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { entrar, sair, exigirSessao } from "./auth.js";
 import * as db from "./db.js";
-import { responder } from "./agente.js";
+import { instrucoesRealtime, responder } from "./agente.js";
 import { transcrever } from "./voz.js";
 import { gerarBriefing } from "./briefing.js";
 import { chavePublica } from "./push.js";
@@ -61,7 +61,7 @@ export function criarApp(pastaCliente?: string) {
           session: {
             type: "realtime",
             model: "gpt-realtime",
-            instructions: `És a Trinity, assistente pessoal do Marco. Fala português de Portugal, de forma natural e concisa. Para qualquer pergunta factual sobre o Marco, as lojas, agenda, tarefas, memórias ou PoweringEG, chama a ferramenta consultar_trinity com a pergunta exata. Nunca inventes dados. Quando a ferramenta responder, transmite o resultado em voz natural, sem repetir desnecessariamente.`,
+            instructions: instrucoesRealtime(),
             audio: {
               output: { voice: "marin" },
               input: { turn_detection: { type: "server_vad", interrupt_response: true, create_response: true } },

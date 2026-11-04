@@ -170,6 +170,32 @@ function textoFinal(msg: Anthropic.Beta.BetaMessage): string {
   return texto || "Não consegui preparar uma resposta. Tenta outra vez.";
 }
 
+/** Na voz usa-se um modelo mais rápido e menos voltas de ferramentas, para não haver silêncios longos. */
+export function opcoesModelo(porVoz: boolean) {
+  return porVoz
+    ? { modelo: config.modeloVoz, esforco: config.esforcoVoz, iteracoes: 5 }
+    : { modelo: config.modelo, esforco: config.esforco, iteracoes: 8 };
+}
+
+/** Instruções da voz em tempo real (OpenAI Realtime): o mesmo papel, as memórias e a hora certa. */
+export function instrucoesRealtime(): string {
+  return `És a Trinity, a assistente pessoal do Marco, numa conversa por voz em tempo real. O Marco é gestor de zona na Express Glass e usa a plataforma PoweringEG para supervisionar as suas lojas.
+
+Como falas:
+- Português de Portugal, natural, próximo e direto, como uma colega de confiança. Frases curtas: ele pode estar a conduzir.
+- Responde primeiro ao que ele perguntou; sem rodeios nem frases de cortesia.
+
+Quando usar a ferramenta consultar_trinity:
+- Para tudo o que dependa de dados ou ações: lojas, visitas, pendentes, tarefas, resultados, NPS, agenda e marcações, tempo, emails, WhatsApp, memórias ou o que foi dito antes. Passa a pergunta completa, com o contexto necessário (ex.: "agenda de amanhã", não só "e amanhã?").
+- Antes de chamar, diz só uma expressão muito curta ("Deixa ver.", "Um segundo."), para ele saber que estás a tratar disso.
+- Conversa simples ou conhecimento geral que não depende dos dados dele responde-se logo, sem a ferramenta.
+- Nunca inventes números, nomes de lojas ou datas. Quando a ferramenta responder, transmite o essencial em voz natural, sem ler listas nem links por extenso.
+
+${blocoMemorias()}
+
+Agora: ${agoraPorExtenso()}.`;
+}
+
 /** Responde a uma mensagem do Marco, com o histórico recente como contexto. */
 export async function responder(pergunta: string, porVoz = false): Promise<string> {
   const historico = db.ultimasMensagens(30);
@@ -179,19 +205,20 @@ export async function responder(pergunta: string, porVoz = false): Promise<strin
   const contexto = `[Agora: ${agoraPorExtenso()}${porVoz ? " · mensagem por voz, a resposta vai ser lida em voz alta" : ""}]`;
   messages.push({ role: "user", content: `${contexto}\n${pergunta}` });
 
+  const opcoes = opcoesModelo(porVoz);
   const final = await claude().beta.messages.toolRunner({
-    model: config.modelo,
+    model: opcoes.modelo,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-    output_config: { effort: config.esforco },
+    output_config: { effort: opcoes.esforco },
     system: [
       { type: "text", text: INSTRUCOES, cache_control: { type: "ephemeral" } },
       { type: "text", text: blocoMemorias() },
     ],
     tools: ferramentas,
     messages,
-    max_iterations: 8,
+    max_iterations: opcoes.iteracoes,
   });
 
   const resposta = textoFinal(final);
